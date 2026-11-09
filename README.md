@@ -1,6 +1,6 @@
 # StoreHouse
 
-API REST de gestão de produtos e stock, feita para o *.NET development hands-on assessment* da Carl Zeiss Vision.
+API REST de gestão de produtos e stock, feita para um *.NET development hands-on assessment*.
 
 A solução tem três projetos principais:
 

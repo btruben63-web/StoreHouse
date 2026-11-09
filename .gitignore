@@ -485,3 +485,6 @@ $RECYCLE.BIN/
 .env
 certs/
 **/keys/
+/docs/2026-11-08-storehouse-design.md
+/docs/superpowers/
+/docs/plansAndSpecs/

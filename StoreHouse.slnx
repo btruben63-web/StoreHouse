@@ -1,4 +1,13 @@
 <Solution>
+  <Folder Name="/Docs/">
+    <File Path="docs/2026-11-08-storehouse-design.md" />
+    <File Path="docs/Architecture.md" />
+    <File Path="docs/Architecture_EN.md" />
+    <File Path="docs/CHANGELOG.md" />
+    <File Path="docs/CHANGELOG_EN.md" />
+    <File Path="docs/Runbook.md" />
+    <File Path="docs/Runbook_EN.md" />
+  </Folder>
   <Folder Name="/IdentityServer/">
     <Project Path="IdentityServer/App.IdentityServer/App.IdentityServer.csproj" />
   </Folder>
@@ -15,6 +24,7 @@
     <File Path="Directory.Packages.props" />
     <File Path="docker-compose.yml" />
     <File Path="README.md" />
+    <File Path="README_EN.md" />
     <File Path="scripts/smoke-test.ps1" />
   </Folder>
   <Folder Name="/UnitTests/">
