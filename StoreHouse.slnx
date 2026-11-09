@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/IdentityServer/">
+    <Project Path="IdentityServer/App.IdentityServer/App.IdentityServer.csproj" />
+  </Folder>
+  <Folder Name="/Product/">
+    <Project Path="Product/Product.Api/Product.Api.csproj" />
+    <Project Path="Product/Product.Application/Product.Application.csproj" />
+    <Project Path="Product/Product.Domain/Product.Domain.csproj" />
+    <Project Path="Product/Product.Infrastructure/Product.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
+    <File Path=".env.example" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="docker-compose.yml" />
+    <File Path="README.md" />
+    <File Path="scripts/smoke-test.ps1" />
+  </Folder>
+  <Folder Name="/UnitTests/">
+    <Project Path="UnitTests/Product.Api.UnitTest/Product.Api.UnitTest.csproj" />
+  </Folder>
+</Solution>

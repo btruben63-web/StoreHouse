@@ -1,0 +1,15 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/*.user
+**/.env
+**/certs
+**/keys
+**/docs
+**/UnitTests
+**/scripts
+**/Dockerfile*
+**/docker-compose*
+**/README.md

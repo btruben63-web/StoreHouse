@@ -1,0 +1,71 @@
+name: storehouse
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app-identityserver:
+    build:
+      context: .
+      dockerfile: IdentityServer/App.IdentityServer/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_HTTPS_PORTS: "8081"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/aspnetapp.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${CERT_PASSWORD}
+      ConnectionStrings__StoreHouseIdentity: Host=postgres;Port=5432;Database=StoreHouseIdentity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Pooling=true;Maximum Pool Size=50
+      IdentityServer__IssuerUri: https://localhost:7001
+      IdentityServer__TokenEndpoint: http://localhost:8080/connect/token
+      IdentityServer__ClientSecret: ${IDENTITY_CLIENT_SECRET}
+      IdentityServer__KeyPath: /home/app/keys
+    ports:
+      - "7001:8081"
+    volumes:
+      - ./certs:/https:ro
+      - identity-keys:/home/app/keys
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  product-api:
+    build:
+      context: .
+      dockerfile: Product/Product.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_HTTPS_PORTS: "8081"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/aspnetapp.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${CERT_PASSWORD}
+      ConnectionStrings__StoreHouse: Host=postgres;Port=5432;Database=StoreHouse;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Pooling=true;Minimum Pool Size=0;Maximum Pool Size=50
+      Jwt__Authority: http://app-identityserver:8080
+      Jwt__MetadataAddress: http://app-identityserver:8080/.well-known/openid-configuration
+      Jwt__Issuer: https://localhost:7001
+      Jwt__Audience: product.api
+      Jwt__RequireHttpsMetadata: "false"
+    ports:
+      - "7039:8081"
+    volumes:
+      - ./certs:/https:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app-identityserver:
+        condition: service_started
+
+volumes:
+  pgdata:
+  identity-keys:
