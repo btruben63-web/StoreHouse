@@ -5,7 +5,6 @@ public static class ProductConstraints
     public const int MinId = 100_000;
     public const int MaxId = 999_999;
     public const int NameMaxLength = 100;
-    public const int NameSearchMinLength = 2;
     public const int DescriptionMaxLength = 500;
     public const int UserNameMaxLength = 100;
     public const int PricePrecision = 10;

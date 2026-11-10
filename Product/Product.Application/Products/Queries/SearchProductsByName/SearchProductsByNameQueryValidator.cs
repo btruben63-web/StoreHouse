@@ -11,8 +11,8 @@ public sealed class SearchProductsByNameQueryValidator : AbstractValidator<Searc
         RuleFor(x => x.Name)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .Must(name => name.Trim().Length is >= ProductConstraints.NameSearchMinLength and <= ProductConstraints.NameMaxLength)
-            .WithMessage($"'Name' must have between {ProductConstraints.NameSearchMinLength} and {ProductConstraints.NameMaxLength} characters.");
+            .Must(name => !string.IsNullOrWhiteSpace(name) && name.Trim().Length <= ProductConstraints.NameMaxLength)
+            .WithMessage($"'Name' must have between 1 and {ProductConstraints.NameMaxLength} characters.");
         RuleFor(x => x.LastItemId).ValidCursor();
         RuleFor(x => x.PageSize).ValidPageSize();
     }

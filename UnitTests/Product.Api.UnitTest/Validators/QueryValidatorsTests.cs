@@ -43,10 +43,15 @@ public sealed class QueryValidatorsTests
 
     [Theory]
     [InlineData("")]
+    [InlineData("   ")]
+    public void SearchByName_EmptyOrWhitespace_Fails(string name) =>
+        _searchByNameValidator.TestValidate(new SearchProductsByNameQuery(name, null, 5)).ShouldHaveValidationErrorFor(x => x.Name);
+
+    [Theory]
     [InlineData("a")]
     [InlineData(" a ")]
-    public void SearchByName_TooShort_Fails(string name) =>
-        _searchByNameValidator.TestValidate(new SearchProductsByNameQuery(name, null, 5)).ShouldHaveValidationErrorFor(x => x.Name);
+    public void SearchByName_SingleCharacter_Passes(string name) =>
+        _searchByNameValidator.TestValidate(new SearchProductsByNameQuery(name, null, 5)).ShouldNotHaveAnyValidationErrors();
 
     [Fact]
     public void SearchByName_TooLong_Fails() =>
