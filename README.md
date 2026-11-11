@@ -156,7 +156,7 @@ UnitTests/Product.Api.UnitTest      → xUnit v3 + Moq
 
 - **ID de 6 dígitos seguro com várias instâncias:** uma `SEQUENCE` do PostgreSQL (`ProductIdSequence`, 100000–999999, sem ciclo) é o valor por omissão da coluna `Id`. A base de dados garante a atomicidade, por isso várias instâncias da API nunca geram o mesmo ID.
 - **Concorrência no stock:** cada alteração é um único `UPDATE` condicional (`... WHERE "Quantity" >= @q`), que corre na mesma transação do registo em `StockMovement`. Pedidos simultâneos nunca deixam o stock negativo, e um `CHECK (Quantity >= 0)` serve de última defesa.
-- **Concorrência no `PUT` e no `DELETE`:** usam concorrência otimista com a coluna de sistema `xmin` do PostgreSQL. Um conflito devolve `409`.
+- **Concorrência no `PUT` e no `DELETE`:** usam concorrência otimista com a coluna de sistema `xmin` do PostgreSQL. Se outro pedido gravar o mesmo produto entre a leitura e a gravação do pedido em curso, devolve `409`. A proteção não cobre o cliente que envia um `PUT` com dados lidos antes e entretanto desatualizados: o `xmin` não é exposto na API, por isso essa alteração é gravada e sobrescreve a anterior (ver [Architecture.md](docs/Architecture.md)).
 - **Soft delete:** o `DELETE` marca `IsDeleted`, `DeletedAt` e `DeletedBy`. Um filtro global do EF Core esconde os produtos apagados, e o histórico de stock é mantido.
 - **Erros:** o padrão `Result` é usado para resultados esperados (validação, não encontrado, conflito, regra de negócio). As exceções inesperadas são tratadas por um `IExceptionHandler` global, que devolve `500` em `ProblemDetails`. A Application não conhece HTTP.
 - **Performance:**

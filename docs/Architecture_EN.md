@@ -116,7 +116,7 @@ The only integration between services is token validation: `Product.Api` fetches
 | Expected errors via `Result` | Handlers return an `Error` instead of throwing; the Application layer knows nothing about HTTP. |
 | 6-digit IDs | PostgreSQL sequence as the default value of the `Id` column. |
 | Concurrent stock | Conditional `ExecuteUpdate` (`Quantity >= @q` / upper limit) inside a transaction with an *execution strategy* (`EnableRetryOnFailure(3)`), together with the `StockMovement` record. |
-| Concurrent `PUT`/`DELETE` | Optimistic concurrency; `DbUpdateConcurrencyException` → `ConcurrencyConflictException` → `409`. |
+| Concurrent `PUT`/`DELETE` | Optimistic concurrency with `xmin` (`Product.Version`), limited to the interval between reading the entity and `SaveChanges` within the same request; `DbUpdateConcurrencyException` → `ConcurrencyConflictException` → `409`. It does not detect stale data sent by the client (see section 10). |
 | Soft delete | Global EF Core filter; stock history is preserved. |
 | Pagination | *Keyset* on `Id` (`lastItemId`, `pageSize` 1–50, default 5); response `items`/`nextCursor`/`hasMore`. |
 | Name search | `ILIKE` with escaping of `%`, `_` and `\` (`LikePatternEscaper`) and a GIN trigram index. |
@@ -154,7 +154,14 @@ The only integration between services is token validation: `Product.Api` fetches
 | Two requests change stock at the same time | A single conditional `UPDATE`, with no read-then-write in the application: `Quantity >= @q` when decreasing and an upper limit when increasing. If it affects 0 rows, the handler tells "does not exist" apart from "insufficient stock/limit exceeded". |
 | Inconsistent stock and history | Update and `StockMovement` in the same transaction (rolled back if the `Result` fails). |
 | Negative stock | `CHECK (Quantity >= 0)` as the last line of defense. |
-| `PUT`/`DELETE` on stale data | Optimistic concurrency with `xmin` → `409`. |
+| Simultaneous `PUT`/`DELETE` on the same product | Optimistic concurrency with `xmin` (`Product.Version`). The handler reads the product (`GetByIdAsync`), changes it and calls `SaveChanges`; the `UPDATE` includes `WHERE xmin = <value read>`. If another request saved the same product between the read and the write, no row is affected, EF Core throws `DbUpdateConcurrencyException` and the API responds `409` (`Product.ConcurrencyConflict`). |
+
+**Scope of the `xmin` protection**
+
+- **Covered: conflict between requests being processed.** The `xmin` value is read and compared on the server, within a single request. The detection window is only the interval between that request's read and its write. Two `PUT`/`DELETE` requests that read the product before either saves: the first saves, the second gets `409`.
+- **Not covered: the client sends data it read earlier that has since gone stale.** `xmin` is not part of the DTOs or the responses (`Version` is not exposed), and `PUT` does not receive `If-Match` or any other version. The API therefore does not know which version the client was working with. If the client did a `GET`, another request already completed and changed the product, and the client then sends a `PUT`, the handler reads the current `xmin`, the `UPDATE` succeeds and the intermediate change is overwritten (*last write wins*), with no `409`. Detecting this case would require the client to send back the version it read and the handler to compare it with the current one.
+- **Outside the scope of `xmin`: stock.** `add-to-stock` and `decrement-stock` use a conditional `ExecuteUpdate`, which does not load the entity or use the concurrency token; they are protected by the conditional `UPDATE` and the `CHECK` (rows above). Although `Stock` also has a mapped `xmin` column, these operations do not check it.
+- **Repeated `DELETE`:** if the first `DELETE` is already committed, the global soft-delete filter hides the product and the second gets `404`; it only gets `409` if both read the product before either write.
 
 Known limitation of the automatic retry of stock operations: see [Runbook_EN.md](Runbook_EN.md#6-known-issues).
 

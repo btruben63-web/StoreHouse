@@ -125,7 +125,7 @@ Os hashes das passwords de seed estão pré-calculados em `IdentitySeedData.cs`;
 | Product.Api devolve `401` com token válido | `Jwt:Issuer`/`Jwt:Audience` diferentes de `IdentityServer:IssuerUri`/`ApiScope`; token expirado (1 h); `Authority`/`MetadataAddress` inacessíveis a partir da API | Alinhar os valores; pedir novo token; em Docker a API usa `http://app-identityserver:8080` |
 | `403` em `POST`/`DELETE` | Só o role `Admin` | Usar um token de `Admin` |
 | `400` em `/{id}` ou `lastItemId` | IDs válidos: 100000–999999; `pageSize` 1–50; `name` com 2–100 caracteres; `min` ≥ 0 e `max` ≥ `min` | Corrigir os parâmetros |
-| `409` em `PUT`/`DELETE` | Produto alterado por outro pedido (`xmin`) | Reler o produto e repetir |
+| `409` em `PUT`/`DELETE` | Outro pedido gravou o mesmo produto entre a leitura e a gravação do pedido atual (`xmin`). Não é devolvido quando o cliente envia um `PUT` com dados lidos antes e entretanto desatualizados: nesse caso a alteração é gravada e sobrescreve a anterior | Reler o produto e repetir |
 | `422` em stock | Stock insuficiente (`decrement-stock`) ou limite de stock excedido (`add-to-stock`); quantidade por operação: 1–1 000 000 | Ajustar a quantidade |
 | `docker compose` responde `no configuration file provided: not found` | Comando fora da raiz | Correr na pasta do `docker-compose.yml` |
 | Contentores não arrancam por portas ocupadas | Portas 7001, 7039 ou 5433 em uso | Parar a instância local ou o processo que as ocupa |

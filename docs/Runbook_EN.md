@@ -125,7 +125,7 @@ The seed password hashes are precomputed in `IdentitySeedData.cs`; if a seed pas
 | Product.Api returns `401` with a valid token | `Jwt:Issuer`/`Jwt:Audience` differ from `IdentityServer:IssuerUri`/`ApiScope`; token expired (1 h); `Authority`/`MetadataAddress` unreachable from the API | Align the values; request a new token; in Docker the API uses `http://app-identityserver:8080` |
 | `403` on `POST`/`DELETE` | `Admin` role only | Use an `Admin` token |
 | `400` on `/{id}` or `lastItemId` | Valid IDs: 100000–999999; `pageSize` 1–50; `name` 2–100 characters; `min` ≥ 0 and `max` ≥ `min` | Fix the parameters |
-| `409` on `PUT`/`DELETE` | Product modified by another request (`xmin`) | Reload the product and retry |
+| `409` on `PUT`/`DELETE` | Another request saved the same product between the current request's read and write (`xmin`). It is not returned when the client sends a `PUT` with data read earlier that has since gone stale: in that case the change is saved and overwrites the previous one | Reload the product and retry |
 | `422` on stock | Insufficient stock (`decrement-stock`) or stock limit exceeded (`add-to-stock`); quantity per operation: 1–1,000,000 | Adjust the quantity |
 | `docker compose` answers `no configuration file provided: not found` | Command run outside the root | Run it in the folder containing `docker-compose.yml` |
 | Containers fail to start because ports are in use | Ports 7001, 7039 or 5433 are taken | Stop the local instance or the process using them |

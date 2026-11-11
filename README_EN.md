@@ -156,7 +156,7 @@ UnitTests/Product.Api.UnitTest      → xUnit v3 + Moq
 
 - **6-digit ID safe with multiple instances:** a PostgreSQL `SEQUENCE` (`ProductIdSequence`, 100000–999999, no cycle) is the default value of the `Id` column. The database guarantees atomicity, so several API instances never generate the same ID.
 - **Stock concurrency:** each change is a single conditional `UPDATE` (`... WHERE "Quantity" >= @q`), which runs in the same transaction as the `StockMovement` record. Simultaneous requests never leave the stock negative, and a `CHECK (Quantity >= 0)` serves as the last line of defense.
-- **Concurrency on `PUT` and `DELETE`:** they use optimistic concurrency with the PostgreSQL `xmin` system column. A conflict returns `409`.
+- **Concurrency on `PUT` and `DELETE`:** they use optimistic concurrency with the PostgreSQL `xmin` system column. If another request saves the same product between the current request's read and write, it returns `409`. The protection does not cover a client sending a `PUT` with data read earlier that has since gone stale: `xmin` is not exposed by the API, so that change is saved and overwrites the previous one (see [Architecture_EN.md](docs/Architecture_EN.md)).
 - **Soft delete:** `DELETE` sets `IsDeleted`, `DeletedAt` and `DeletedBy`. A global EF Core filter hides deleted products, and the stock history is kept.
 - **Errors:** the `Result` pattern is used for expected outcomes (validation, not found, conflict, business rule). Unexpected exceptions are handled by a global `IExceptionHandler`, which returns `500` as `ProblemDetails`. The Application layer knows nothing about HTTP.
 - **Performance:**

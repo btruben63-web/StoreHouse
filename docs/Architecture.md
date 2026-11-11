@@ -116,7 +116,7 @@ A única integração entre serviços é a validação de tokens: a `Product.Api
 | Erros esperados via `Result` | Handlers devolvem `Error` em vez de lançar exceções; a Application não conhece HTTP. |
 | IDs de 6 dígitos | Sequence PostgreSQL como valor por omissão da coluna `Id`. |
 | Stock concorrente | `ExecuteUpdate` condicional (`Quantity >= @q` / limite superior) dentro de transação com *execution strategy* (`EnableRetryOnFailure(3)`), junto com o registo em `StockMovement`. |
-| `PUT`/`DELETE` concorrentes | Concorrência otimista; `DbUpdateConcurrencyException` → `ConcurrencyConflictException` → `409`. |
+| `PUT`/`DELETE` concorrentes | Concorrência otimista com `xmin` (`Product.Version`), limitada ao intervalo entre a leitura da entidade e o `SaveChanges` dentro do mesmo pedido; `DbUpdateConcurrencyException` → `ConcurrencyConflictException` → `409`. Não deteta dados desatualizados enviados pelo cliente (ver secção 10). |
 | Soft delete | Filtro global do EF Core; histórico de stock preservado. |
 | Paginação | *Keyset* por `Id` (`lastItemId`, `pageSize` 1–50, por omissão 5); resposta `items`/`nextCursor`/`hasMore`. |
 | Pesquisa por nome | `ILIKE` com escape de `%`, `_` e `\` (`LikePatternEscaper`) e índice GIN trigram. |
@@ -154,7 +154,14 @@ A única integração entre serviços é a validação de tokens: a `Product.Api
 | Dois pedidos alteram o stock em simultâneo | `UPDATE` único e condicional, sem ler-e-escrever na aplicação: `Quantity >= @q` ao diminuir e limite superior ao aumentar. Se afetar 0 linhas, o handler distingue "não existe" de "stock insuficiente/limite excedido". |
 | Stock e histórico inconsistentes | Update e `StockMovement` na mesma transação (rollback se o `Result` falhar). |
 | Stock negativo | `CHECK (Quantity >= 0)` como última defesa. |
-| `PUT`/`DELETE` sobre dados desatualizados | Concorrência otimista com `xmin` → `409`. |
+| `PUT`/`DELETE` em simultâneo sobre o mesmo produto | Concorrência otimista com `xmin` (`Product.Version`). O handler lê o produto (`GetByIdAsync`), altera-o e chama `SaveChanges`; o `UPDATE` inclui `WHERE xmin = <valor lido>`. Se outro pedido gravou o mesmo produto entre a leitura e a gravação, nenhuma linha é afetada, o EF Core lança `DbUpdateConcurrencyException` e a API responde `409` (`Product.ConcurrencyConflict`). |
+
+**Alcance da proteção com `xmin`**
+
+- **Coberto: conflito entre pedidos em processamento.** O valor de `xmin` é lido e comparado no servidor, dentro de um único pedido. A janela de deteção é apenas o intervalo entre a leitura e a gravação desse pedido. Dois `PUT`/`DELETE` que leem o produto antes de qualquer um gravar: o primeiro grava, o segundo recebe `409`.
+- **Não coberto: o cliente envia dados que consultou antes e que entretanto ficaram desatualizados.** O `xmin` não faz parte dos DTOs nem das respostas (`Version` não é exposto) e o `PUT` não recebe `If-Match` nem outra versão. Por isso a API não sabe com que versão o cliente trabalhou. Se o cliente fez `GET`, outro pedido já concluído alterou o produto e depois o cliente envia `PUT`, o handler lê o `xmin` atual, o `UPDATE` tem sucesso e a alteração intermédia é sobrescrita (*last write wins*), sem `409`. Detetar este caso exigiria que o cliente devolvesse a versão lida e que o handler a comparasse com a atual.
+- **Fora do âmbito do `xmin`: stock.** `add-to-stock` e `decrement-stock` usam `ExecuteUpdate` condicional, que não carrega a entidade nem usa o token de concorrência; são protegidos pelo `UPDATE` condicional e pelo `CHECK` (linhas acima). Embora `Stock` também tenha uma coluna `xmin` mapeada, ela não é verificada por estas operações.
+- **`DELETE` repetido:** se o primeiro `DELETE` já foi confirmado, o filtro global de soft delete esconde o produto e o segundo recebe `404`; só recebe `409` se os dois leram o produto antes de qualquer gravação.
 
 Limitação conhecida da repetição automática de operações de stock: ver [Runbook.md](Runbook.md#6-problemas-conhecidos).
 
